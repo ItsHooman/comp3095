@@ -1,0 +1,92 @@
+# 1. docker-compose -p microservices-comp3095-ecommerce -f docker-compose.yml up -d
+#    -- this command will start the container in detached mode without rebuilding the image (if they already exist)
+#
+# 2. docker-compose -p microservices-comp3095-ecommerce -f docker-compose.yml up -d --build
+#   -- this command forces the rebuild of images, even if the image already exist, before starting the containers
+
+services:
+
+  inventory-service:
+    image: inventory-service
+    ports:
+      - "8087:8087"
+    build:
+      context: ./inventory-service
+      dockerfile: ./Dockerfile
+    container_name: inventory-service-prof
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/inventory-service
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_JPA_HIBERNATE_DOL_AUTO=none
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - postgres-inventory
+    networks:
+      - spring
+
+
+  order-service:
+    image: order-service
+    ports:
+      - "8086:8086"
+    build:
+      context: ./order-service
+      dockerfile: ./Dockerfile
+
+
+  product-service:
+    image: product-service
+    ports:
+      - "8084:8084"
+    build:
+      context: ./product-service  # the directory where the Dockerfile resides
+      dockerfile: ./Dockerfile    # specify the dockerfile for use to build image
+    container_name: product-service
+    environment:
+      SPRING_PROFILE_ACTIVE: docker
+    depends_on:
+      - mongodb
+    networks:
+      - spring
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - ./data/mongo/products:/data/db
+      - ./init/mongo/docker-entrypoint-initdb.d/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
+    # command: mongod -auth
+    # restart: unless-stopped
+    networks:
+      - spring
+
+  mongo-express:
+    image: mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=password
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+    container_name: mongo-express
+    depends_on:
+      - mongodb
+    networks:
+      - spring
+
+# optional volume section for persisting data
+volumes:
+  mongo-db:
+    driver: local
+  postgres-db:
+    driver: local
+
+networks:
+  spring:
+    driver: bridge
