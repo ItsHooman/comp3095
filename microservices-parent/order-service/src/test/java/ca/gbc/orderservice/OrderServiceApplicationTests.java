@@ -9,6 +9,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 
@@ -29,8 +31,15 @@ class OrderServiceApplicationTests {
 		RestAssured.port = port;
 	}
 
-	static {
-		postgreSQLContainer.start();
+	//static {
+	//	postgreSQLContainer.start();
+	//}
+	@DynamicPropertySource
+	static void setProperties(DynamicPropertyRegistry registry) {
+		postgreSQLContainer.start(); // Ensure the container starts
+		registry.add("spring.datasource.url", postgreSQLContainer::getJdbcUrl);
+		registry.add("spring.datasource.username", postgreSQLContainer::getUsername);
+		registry.add("spring.datasource.password", postgreSQLContainer::getPassword);
 	}
 
 	@Test
